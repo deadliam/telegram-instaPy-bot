@@ -1,0 +1,18 @@
+{
+	"accounts": [
+		{
+			"username": "name1",
+			"password": "pass1",
+			"tags": ["tag1"],
+			"comments": ["👌"],
+			"likes_amount": 9
+		},
+		{
+			"username": "name2",
+			"password": "pass2",
+			"tags": ["tag1","tag2","tag3"],
+			"comments": ["👌"],
+			"likes_amount": 9
+		}
+	]
+}
