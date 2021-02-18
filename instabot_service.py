@@ -35,9 +35,13 @@ def startInstagramBot(arg):
 	while botProcess.poll() is None:
 		time.sleep(0.5)
 	
+	if out is not None:
+		if "CRITICAL" in out:
+			return "CRITICAL"
+
 	if botProcess.returncode is not 0:
-		return False
-	return True
+		return str(botProcess.returncode)
+	return "0"
 
 
 def stopInstagramBot(pid):
@@ -74,6 +78,16 @@ def parseLog(account_name):
 		for line in line_list:
 			if count > 0:
 				break
+			if line.find('|> No any statistics to show') != -1:
+				resultList.append(line)
+
+			if line.find('Unable to login to Instagram! You will find more information in the logs above.') != -1:
+				resultList.append(line)
+
+			if line.find('Internet Connection Status: error') != -1:
+				count += 1
+				resultList.append(line)
+				return resultList
 
 			if line.find('|> LIKED') != -1 and 'ALREADY LIKED:' in line:
 				count += 1
@@ -141,6 +155,8 @@ def callback_query(call):
 	isRunning, pid = checkAlreadyRunningBot(bot_name)
 
 	if call.data == "status":
+		"ps -aef | grep -i 'instabot_runner' | grep -v 'grep'"
+
 		for account in accounts:
 			statsList = getStatus(account["username"])
 			statsList.insert(0, "=== " + account["username"] + " ===\n")
@@ -173,11 +189,17 @@ def callback_query(call):
 		tempStr = "All Accounts"
 
 	bot.send_message(call.message.chat.id, str(acc) + tempStr + " - has strated!")
-	if startInstagramBot(str(acc)):
-		bot.send_message(call.message.chat.id, "Finished successfully")
-	else:
-		bot.send_message(call.message.chat.id, "Execution failed")
 
+	output = startInstagramBot(str(acc))	
+	if output == "0":
+		bot.send_message(call.message.chat.id, "--- Session ended ---")
+	elif int(output) != 0:
+		if int(output) == -15:
+			bot.send_message(call.message.chat.id, "--- Session stopped by user ---")
+			return
+		bot.send_message(call.message.chat.id, "Execution failed with CODE = " + output)
+	elif output == "CRITICAL":
+		bot.send_message(call.message.chat.id, "--- CRITICAL execution failed --- \n Check statistics")
 
 @bot.message_handler(func=lambda message: True)
 def message_handler(message):
