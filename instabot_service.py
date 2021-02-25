@@ -6,11 +6,13 @@ import os
 import signal
 import json
 import psutil
+import re
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 working_dir = "/home/pi/Instagram"
 bot_name = "instabot_runner"
 logs_path = "/home/pi/InstaPy/logs"
+general_log_name = "general.log"
 
 # import RPi.GPIO as GPIO
 
@@ -22,6 +24,8 @@ TELEGRAM_TOKEN = "<TOKEN>"
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 pid = ""
+currentActiveAccountName = ""
+
 
 def startInstagramBot(arg):
 	print("Account: " + arg)
@@ -58,6 +62,7 @@ def checkAlreadyRunningBot(name):
 			return True, int(pid)
 	return False, None
 
+
 def getStatus(name):
 	accounts = readConfig()
 	accountsNames = []
@@ -66,8 +71,9 @@ def getStatus(name):
 	statsList = parseLog(name)
 	return statsList
 
+
 def parseLog(account_name):
-	log_path = logs_path + "/" + account_name + "/general.log"
+	log_path = logs_path + "/" + account_name + "/" + general_log_name
 	resultList = []
 
 	with open(log_path, 'r') as file_:
@@ -124,28 +130,73 @@ def parseLog(account_name):
 				resultList.append(line)
 	return resultList
 
+
+def parseLogProgress(account_name):
+	log_path = logs_path + "/" + account_name + "/" + general_log_name
+	percentTag = 0
+	percentLike = 0
+
+	with open(log_path, 'r') as file_:
+		line_list = list(file_)
+		line_list.reverse()
+
+		tagFlag = False
+		likeFlag = False
+
+		tagsStr = ""
+		likesStr = ""
+
+		lastSessionIsNotSuccess = False
+		# delta = 0
+
+		for line in line_list:
+			if tagFlag and likeFlag:
+				break
+			
+			if line.find('Session started!') != -1 or line.find('Session ended!') != -1 or lastSessionIsNotSuccess:
+				tagFlag = True
+				likeFlag = True
+
+			if line.find('Like# [') != -1:
+				resLike = line.split()[-1]
+				likesStr = resLike
+				resLike = re.match(r"[^[]*\[([^]]*)\]", resLike).groups()[0]
+				firstLike = resLike.split("/")[0]
+				secondLike = resLike.split("/")[1]
+				if firstLike == secondLike:
+					lastSessionIsNotSuccess = True
+			
+			if line.find('Tag [') != -1:
+				resTag = line.split()[-1]
+				tagsStr = resTag
+				# delta = 10
+
+	# percent = (int(percentTag) - delta + int(percentLike) * 0.1)
+	# return percent
+	return tagsStr, likesStr
+
 def readConfig():
 	with open(working_dir + '/config.json', 'r') as myfile:
 		data=myfile.read()
 		obj = json.loads(data)
 		return obj['accounts']
 
+
 def gen_markup(accountsNamesList):
 	markup = InlineKeyboardMarkup()
 	# markup.row_width = 5
-	markup.add(InlineKeyboardButton("All", callback_data="all"),
-			InlineKeyboardButton("Stop", callback_data="stop"))
-	
 	for name in accountsNamesList:
 		markup.add(InlineKeyboardButton(name, callback_data=name))
-
 	markup.add(InlineKeyboardButton("Status", callback_data="status"))
+	markup.add(InlineKeyboardButton("Progress", callback_data="progress"))
+	markup.add(InlineKeyboardButton("Stop", callback_data="stop"))
 	return markup
 
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
 	
+	global currentActiveAccountName
 	acc = ""
 	accounts = readConfig()
 	accountsNames = []
@@ -154,8 +205,26 @@ def callback_query(call):
 
 	isRunning, pid = checkAlreadyRunningBot(bot_name)
 
+	if call.data == "progress":
+
+		if not isRunning:
+			bot.answer_callback_query(call.id, "Bot is not running!")
+			return
+
+		tagsStr, likesStr = parseLogProgress(currentActiveAccountName)
+		if isRunning and tagsStr == "" and likesStr == "":
+			bot.answer_callback_query(call.id, "Loading... Try later!")
+			return
+
+		likes = ""
+		if likesStr != "":
+			likes = "\n" + likesStr + " LIKES"
+
+		bot.send_message(call.message.chat.id, tagsStr + " TAGS" + likes)
+		return
+
 	if call.data == "status":
-		"ps -aef | grep -i 'instabot_runner' | grep -v 'grep'"
+		# "ps -aef | grep -i 'instabot_runner' | grep -v 'grep'"
 
 		for account in accounts:
 			statsList = getStatus(account["username"])
@@ -176,21 +245,18 @@ def callback_query(call):
 
 	if call.data == "all":
 		pass
+		# Disabled button
 		# bot.answer_callback_query(call.id, "All Accounts started!")
 
 	count = 0
 	for name in accountsNames:
 		if call.data == name:
-			acc = accountsNames[count]
+			currentActiveAccountName = str(accountsNames[count])
 		count += 1
 
-	tempStr = ""
-	if acc == "":
-		tempStr = "All Accounts"
+	bot.send_message(call.message.chat.id, currentActiveAccountName + " - has strated!")
+	output = startInstagramBot(currentActiveAccountName)
 
-	bot.send_message(call.message.chat.id, str(acc) + tempStr + " - has strated!")
-
-	output = startInstagramBot(str(acc))	
 	if output == "0":
 		bot.send_message(call.message.chat.id, "--- Session ended ---")
 	elif int(output) != 0:
@@ -201,6 +267,7 @@ def callback_query(call):
 	elif output == "CRITICAL":
 		bot.send_message(call.message.chat.id, "--- CRITICAL execution failed --- \n Check statistics")
 
+
 @bot.message_handler(func=lambda message: True)
 def message_handler(message):
 
@@ -210,5 +277,6 @@ def message_handler(message):
 		accountsNames.append(account["username"])
 
 	bot.send_message(message.chat.id, "Select option:", reply_markup=gen_markup(accountsNames))
+
 
 bot.polling(none_stop=True)
