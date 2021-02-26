@@ -68,13 +68,14 @@ def getStatus(name):
 	accountsNames = []
 	for account in accounts:
 		accountsNames.append(account["username"])
-	statsList = parseLog(name)
-	return statsList
+	statsList, dateTime = parseLog(name)
+	return statsList, dateTime
 
 
 def parseLog(account_name):
 	log_path = logs_path + "/" + account_name + "/" + general_log_name
 	resultList = []
+	dateTime = ""
 
 	with open(log_path, 'r') as file_:
 		line_list = list(file_)
@@ -82,10 +83,17 @@ def parseLog(account_name):
 
 		count = 0
 		for line in line_list:
+
+			if line.find('Sessional Live Report:') != -1:
+				dateStr = line.split()
+				dateTime = dateStr[1] + " " + dateStr[2]
+
 			if count > 0:
 				break
+
 			if line.find('|> No any statistics to show') != -1:
 				resultList.append(line)
+				count += 1
 
 			if line.find('Unable to login to Instagram! You will find more information in the logs above.') != -1:
 				resultList.append(line)
@@ -128,7 +136,8 @@ def parseLog(account_name):
 
 			if line.find('[Session lasted') != -1:
 				resultList.append(line)
-	return resultList
+
+	return resultList, dateTime
 
 
 def parseLogProgress(account_name):
@@ -227,7 +236,8 @@ def callback_query(call):
 		# "ps -aef | grep -i 'instabot_runner' | grep -v 'grep'"
 
 		for account in accounts:
-			statsList = getStatus(account["username"])
+			statsList, dateTime = getStatus(account["username"])
+			statsList.insert(0, dateTime + "\n")
 			statsList.insert(0, "=== " + account["username"] + " ===\n")
 			stringStats = ''.join(statsList)
 			bot.send_message(call.message.chat.id, stringStats)
