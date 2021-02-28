@@ -31,7 +31,11 @@ def startBot(account):
 	session.set_relationship_bounds(enabled=True, max_followers=1000)
 
 	# This line should be at the very end
-	session.like_by_tags(account["tags"], amount=account["likes_amount"])
+	
+	if account["locations"][0] != "":
+		session.new_like_by_locations(locations=account["locations"], amount=account["likes_amount"], media=None, randomize=False, skip_top_posts=False, like_amount_per_user=2)
+	else:
+		session.like_by_tags(account["tags"], amount=account["likes_amount"])
 
 	session.end()
 

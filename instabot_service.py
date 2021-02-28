@@ -150,39 +150,40 @@ def parseLogProgress(account_name):
 		line_list.reverse()
 
 		tagFlag = False
-		likeFlag = False
+		# likeFlag = False
 
 		tagsStr = ""
-		likesStr = ""
+		# likesStr = ""
 
 		lastSessionIsNotSuccess = False
 		# delta = 0
 
 		for line in line_list:
-			if tagFlag and likeFlag:
+			if tagFlag: # and likeFlag:
 				break
 			
 			if line.find('Session started!') != -1 or line.find('Session ended!') != -1 or lastSessionIsNotSuccess:
 				tagFlag = True
-				likeFlag = True
 
-			if line.find('Like# [') != -1:
-				resLike = line.split()[-1]
-				likesStr = resLike
-				resLike = re.match(r"[^[]*\[([^]]*)\]", resLike).groups()[0]
-				firstLike = resLike.split("/")[0]
-				secondLike = resLike.split("/")[1]
-				if firstLike == secondLike:
-					lastSessionIsNotSuccess = True
-			
+			# if line.find('Like# [') != -1:
+			# 	resLike = line.split()[-1]
+			# 	likesStr = resLike
+			# 	resLike = re.match(r"[^[]*\[([^]]*)\]", resLike).groups()[0]
+			# 	firstLike = resLike.split("/")[0]
+			# 	secondLike = resLike.split("/")[1]
+			# 	if firstLike == secondLike:
+			# 		lastSessionIsNotSuccess = True
+			# 	likeFlag = True
+
 			if line.find('Tag [') != -1:
 				resTag = line.split()[-1]
 				tagsStr = resTag
+				tagFlag = True
 				# delta = 10
-
+			
 	# percent = (int(percentTag) - delta + int(percentLike) * 0.1)
 	# return percent
-	return tagsStr, likesStr
+	return tagsStr #, likesStr
 
 def readConfig():
 	with open(working_dir + '/config.json', 'r') as myfile:
@@ -220,16 +221,12 @@ def callback_query(call):
 			bot.answer_callback_query(call.id, "Bot is not running!")
 			return
 
-		tagsStr, likesStr = parseLogProgress(currentActiveAccountName)
-		if isRunning and tagsStr == "" and likesStr == "":
+		tagsStr = parseLogProgress(currentActiveAccountName)
+		if isRunning and tagsStr == "":
 			bot.answer_callback_query(call.id, "Loading... Try later!")
 			return
 
-		likes = ""
-		if likesStr != "":
-			likes = "\n" + likesStr + " LIKES"
-
-		bot.send_message(call.message.chat.id, tagsStr + " TAGS" + likes)
+		bot.send_message(call.message.chat.id, tagsStr + " TAGS")
 		return
 
 	if call.data == "status":

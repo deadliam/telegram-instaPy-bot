@@ -5,14 +5,16 @@
 			"password": "pass1",
 			"tags": ["tag1"],
 			"comments": ["👌"],
-			"likes_amount": 9
+			"likes_amount": 9,
+			"locations": ["212898659/kyiv-ukraine/"]
 		},
 		{
 			"username": "name2",
 			"password": "pass2",
 			"tags": ["tag1","tag2","tag3"],
 			"comments": ["👌"],
-			"likes_amount": 9
+			"likes_amount": 9,
+			"locations": ["212898659/kyiv-ukraine/"]
 		}
 	]
 }
