@@ -152,7 +152,7 @@ def parseLogProgress(account_name):
 		tagFlag = False
 		# likeFlag = False
 
-		tagsStr = ""
+		resultStr = ""
 		# likesStr = ""
 
 		lastSessionIsNotSuccess = False
@@ -177,13 +177,17 @@ def parseLogProgress(account_name):
 
 			if line.find('Tag [') != -1:
 				resTag = line.split()[-1]
-				tagsStr = resTag
+				resultStr = resTag
 				tagFlag = True
 				# delta = 10
+			if line.find('Location [') != -1:
+				resLocation = line.split()[-1]
+				resultStr = resLocation
+				tagFlag = True
 			
 	# percent = (int(percentTag) - delta + int(percentLike) * 0.1)
 	# return percent
-	return tagsStr #, likesStr
+	return resultStr #, likesStr
 
 def readConfig():
 	with open(working_dir + '/config.json', 'r') as myfile:
@@ -197,8 +201,8 @@ def gen_markup(accountsNamesList):
 	# markup.row_width = 5
 	for name in accountsNamesList:
 		markup.add(InlineKeyboardButton(name, callback_data=name))
-	markup.add(InlineKeyboardButton("Status", callback_data="status"))
-	markup.add(InlineKeyboardButton("Progress", callback_data="progress"))
+	markup.add(InlineKeyboardButton("Status", callback_data="status"), 
+		InlineKeyboardButton("Progress", callback_data="progress"))
 	markup.add(InlineKeyboardButton("Stop", callback_data="stop"))
 	return markup
 
@@ -221,12 +225,12 @@ def callback_query(call):
 			bot.answer_callback_query(call.id, "Bot is not running!")
 			return
 
-		tagsStr = parseLogProgress(currentActiveAccountName)
-		if isRunning and tagsStr == "":
+		resultStr = parseLogProgress(currentActiveAccountName)
+		if isRunning and resultStr == "":
 			bot.answer_callback_query(call.id, "Loading... Try later!")
 			return
 
-		bot.send_message(call.message.chat.id, tagsStr + " TAGS")
+		bot.send_message(call.message.chat.id, resultStr + " TAGS/LOCATIONS")
 		return
 
 	if call.data == "status":

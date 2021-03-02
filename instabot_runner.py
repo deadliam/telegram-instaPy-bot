@@ -18,14 +18,14 @@ def startBot(account):
 	session = InstaPy(username=account["username"], password=account["password"], headless_browser=True)
 	session.login()
 
+	session.set_quota_supervisor(enabled=True, peak_comments_daily=240, peak_comments_hourly=21)
 	session.set_dont_like(["naked", "nsfw"])
-	#session.set_do_follow(True, percentage=50)
 	session.set_do_follow(enabled=False, percentage=50)
 	session.set_do_comment(True, percentage=100)
 	session.set_comments(account["comments"])
 	session.set_skip_users(skip_private=True,
 					   private_percentage=100,
-					   skip_business=True,
+					   skip_business=False,
 					   skip_non_business=False,
 					   business_percentage=100)
 	session.set_relationship_bounds(enabled=True, max_followers=1000)
@@ -33,7 +33,8 @@ def startBot(account):
 	# This line should be at the very end
 	
 	if account["locations"][0] != "":
-		session.new_like_by_locations(locations=account["locations"], amount=account["likes_amount"], media=None, randomize=False, skip_top_posts=False, like_amount_per_user=2)
+		session.like_by_locations(locations=account["locations"], amount=account["likes_amount"], skip_top_posts=True, randomize=True)
+		# session.new_like_by_locations(locations=account["locations"], amount=account["likes_amount"], media=None, randomize=False, skip_top_posts=False, like_amount_per_user=2)
 	else:
 		session.like_by_tags(account["tags"], amount=account["likes_amount"])
 
