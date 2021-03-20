@@ -7,6 +7,8 @@ import signal
 import json
 import psutil
 import re
+import shutil
+from datetime import datetime
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 working_dir = "/home/pi/Instagram"
@@ -71,6 +73,17 @@ def getStatus(name):
 	statsList, dateTime = parseLog(name)
 	return statsList, dateTime
 
+def saveLog(account_name):
+	date_time = datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
+	log_path = logs_path + "/" + account_name + "/"
+	shutil.copy2(log_path + general_log_name, log_path + "general" + date_time + ".log")
+	
+	if os.path.isfile(log_path + general_log_name):
+		os.remove(log_path + general_log_name)
+	else:    ## Show an error ##
+		print("Error: %s file not found" % log_path + general_log_name)
+		
+	open(log_path + general_log_name, 'a').close()
 
 def parseLog(account_name):
 	log_path = logs_path + "/" + account_name + "/" + general_log_name
@@ -201,7 +214,7 @@ def gen_markup(accountsNamesList):
 	# markup.row_width = 5
 	for name in accountsNamesList:
 		markup.add(InlineKeyboardButton(name, callback_data=name))
-	markup.add(InlineKeyboardButton("Status", callback_data="status"), 
+	markup.add(InlineKeyboardButton("Statistics", callback_data="status"), 
 		InlineKeyboardButton("Progress", callback_data="progress"))
 	markup.add(InlineKeyboardButton("Stop", callback_data="stop"))
 	return markup
@@ -230,7 +243,7 @@ def callback_query(call):
 			bot.answer_callback_query(call.id, "Loading... Try later!")
 			return
 
-		bot.send_message(call.message.chat.id, resultStr + " TAGS/LOCATIONS")
+		bot.send_message(call.message.chat.id, "=== " + currentActiveAccountName + " ===\n" + resultStr + " TAGS/LOCATIONS")
 		return
 
 	if call.data == "status":
@@ -266,6 +279,8 @@ def callback_query(call):
 		count += 1
 
 	bot.send_message(call.message.chat.id, currentActiveAccountName + " - has strated!")
+
+	saveLog(currentActiveAccountName)
 	output = startInstagramBot(currentActiveAccountName)
 
 	if output == "0":
